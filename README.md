@@ -145,3 +145,15 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## 📜 License
 
 PolyForm Noncommercial License 1.0.0 & MIT License.
+
+---
+
+## 🏆 LeetCode Solutions
+
+### 3327. Check if DFS Strings Are Palindromes (Hard)
+- **Implementation**: [check_if_dfs_strings_are_palindromes.py](file:///E:/All%20Projects/03%20-%20Web%20Applications/Deep%20Stream/leetcode/check_if_dfs_strings_are_palindromes.py)
+- **Algorithm**: Tree Post-order DFS Traversal + Manacher's Algorithm ($O(N)$ time, $O(N)$ space).
+- **Explanation**:
+  1. Construct the tree and perform a post-order traversal to build the global traversal string `T` while tracking the subtree boundaries `[L[u], R[u]]` for each node `u`.
+  2. Use Manacher's Algorithm on `T` to check in $O(1)$ time if any substring `T[L[u] : R[u] + 1]` is a palindrome.
+
