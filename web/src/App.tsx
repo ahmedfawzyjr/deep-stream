@@ -35,6 +35,15 @@ import { IoTSmartBallViewer } from './components/IoTSmartBallViewer';
 import { PassingSonarViewer } from './components/PassingSonarViewer';
 import { VARVerdictAudio } from './components/VARVerdictAudio';
 import PassingNetwork from './components/PassingNetwork';
+import MatchReportPanel from './components/MatchReportPanel';
+import SpeedDistancePanel from './components/SpeedDistancePanel';
+import PlayerHeatmapViewer from './components/PlayerHeatmapViewer';
+import TacticalProfileCard from './components/TacticalProfileCard';
+import PossessionLiveDashboard from './components/PossessionLiveDashboard';
+import GMMTeamClusterViewer from './components/GMMTeamClusterViewer';
+import PlayerPossessionBreakdown from './components/PlayerPossessionBreakdown';
+import YOLO26AnalyticsStudio from './components/YOLO26AnalyticsStudio';
+import NextGenStadiumStudio from './components/NextGenStadiumStudio';
 
 
 
@@ -59,9 +68,59 @@ interface MatchState {
   momentum: number;
 }
 
+interface TabItem {
+  id: string;
+  label: string;
+  category: "match" | "ai-vision" | "tactics" | "medical" | "ops";
+  icon: string;
+  color: string;
+  bg: string;
+  tag?: string;
+}
+
+const TABS: TabItem[] = [
+  // Match & Gameplay
+  { id: "live", label: "Live Match Center", category: "match", icon: "🔥", color: "#00ff87", bg: "rgba(0,255,135,0.12)" },
+  { id: "simulator", label: "Tactical Simulator", category: "match", icon: "⚡", color: "#60a5fa", bg: "rgba(59,130,246,0.12)" },
+  { id: "epl", label: "EPL Gameplay", category: "match", icon: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", color: "#ef4444", bg: "rgba(239,68,68,0.12)" },
+  { id: "bracket", label: "World Cup Bracket", category: "match", icon: "🏆", color: "#fbbf24", bg: "rgba(251,191,36,0.12)" },
+  { id: "fantasy", label: "Live Fantasy", category: "match", icon: "🎖️", color: "#facc15", bg: "rgba(250,204,21,0.12)" },
+
+  // AI & Computer Vision Engines
+  { id: "ai-analytics", label: "AI Football Analytics", category: "ai-vision", icon: "⚽", color: "#4ade80", bg: "rgba(74,222,128,0.15)", tag: "YOLO11m" },
+  { id: "possession", label: "Possession Analytics", category: "ai-vision", icon: "🏟️", color: "#f87171", bg: "rgba(248,113,113,0.15)", tag: "GMM CIELAB" },
+  { id: "yolo26", label: "YOLO26 Studio", category: "ai-vision", icon: "🤖", color: "#c084fc", bg: "rgba(192,132,252,0.15)", tag: "17-Pose" },
+  { id: "nextgen", label: "Next-Gen Stadium Engine", category: "ai-vision", icon: "⚡", color: "#38bdf8", bg: "rgba(56,189,248,0.15)", tag: "320 FPS" },
+
+  // Scouting & Pass Tactics
+  { id: "scout", label: "AI Scout Engine", category: "tactics", icon: "🔍", color: "#c084fc", bg: "rgba(168,85,247,0.12)" },
+  { id: "alphazero", label: "AlphaZero Pass", category: "tactics", icon: "🎯", color: "#4ade80", bg: "rgba(34,197,94,0.12)" },
+  { id: "sonar", label: "Passing Sonar", category: "tactics", icon: "🎯", color: "#38bdf8", bg: "rgba(56,189,248,0.12)" },
+  { id: "voronoi", label: "Voronoi Control", category: "tactics", icon: "🧮", color: "#4ade80", bg: "rgba(34,197,94,0.12)" },
+  { id: "stocks", label: "Player Stocks", category: "tactics", icon: "💰", color: "#facc15", bg: "rgba(234,179,8,0.12)" },
+
+  // Medical, Biomechanics & 3D
+  { id: "fatigue", label: "Fatigue & Risk", category: "medical", icon: "🛡️", color: "#f87171", bg: "rgba(239,68,68,0.12)" },
+  { id: "biomechanics", label: "Biomechanics", category: "medical", icon: "🧠", color: "#ef4444", bg: "rgba(239,68,68,0.12)" },
+  { id: "board3d", label: "3D Board", category: "medical", icon: "✏️", color: "#4ade80", bg: "rgba(34,197,94,0.12)" },
+  { id: "ar", label: "WebAR View", category: "medical", icon: "🥽", color: "#38bdf8", bg: "rgba(14,165,233,0.12)" },
+  { id: "visionpro", label: "Vision Pro Spatial", category: "medical", icon: "🕶️", color: "#c084fc", bg: "rgba(192,132,252,0.12)" },
+  { id: "twin", label: "Digital Twin", category: "medical", icon: "🏟️", color: "#38bdf8", bg: "rgba(56,189,248,0.12)" },
+
+  // Operations & Hardware
+  { id: "referee", label: "AI Referee", category: "ops", icon: "⚖️", color: "#facc15", bg: "rgba(234,179,8,0.12)" },
+  { id: "academy", label: "Youth Academy", category: "ops", icon: "🎓", color: "#c084fc", bg: "rgba(168,85,247,0.12)" },
+  { id: "comanager", label: "Co-Manager", category: "ops", icon: "🤖", color: "#f87171", bg: "rgba(248,113,113,0.12)" },
+  { id: "smartball", label: "IoT Smart Ball", category: "ops", icon: "⚽", color: "#facc15", bg: "rgba(250,204,21,0.12)" },
+  { id: "varaudio", label: "VAR Audio", category: "ops", icon: "🔊", color: "#4ade80", bg: "rgba(34,197,94,0.12)" },
+  { id: "grpc", label: "gRPC Inspector", category: "ops", icon: "📡", color: "#38bdf8", bg: "rgba(56,189,248,0.12)" },
+];
+
 export default function App() {
   const [matchId, setMatchId] = useState<string>("wc_final_2026");
   const [activeTab, setActiveTab] = useState<string>("live");
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [wsConnected, setWsConnected] = useState<boolean>(false);
   const [matchState, setMatchState] = useState<MatchState>({
     match_id: "wc_final_2026",
@@ -157,233 +216,176 @@ export default function App() {
     };
   }, [matchId]);
 
+  // Filter tabs based on category and search
+  const filteredTabs = TABS.filter((tab) => {
+    const matchesCat = activeCategory === "all" || tab.category === activeCategory;
+    const matchesSearch = searchQuery === "" || tab.label.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
+
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#070a13', color: '#f3f4f6' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#030712', color: '#f3f4f6' }}>
       
-      {/* Navigation Header */}
-      <header className="glass-panel" style={{ margin: '16px', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '32px' }}>⚽</span>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800, letterSpacing: '-0.5px' }} className="gradient-text">
-                DeepKick
-              </h1>
-              <span style={{ 
-                fontSize: '11px', 
-                padding: '2px 8px', 
-                borderRadius: '12px', 
-                backgroundColor: wsConnected ? 'rgba(0, 255, 135, 0.1)' : 'rgba(255, 165, 0, 0.1)', 
-                color: wsConnected ? 'var(--color-green)' : 'orange',
-                border: wsConnected ? '1px solid rgba(0, 255, 135, 0.2)' : '1px solid rgba(255, 165, 0, 0.2)',
-                fontWeight: 600
-              }}>
-                {wsConnected ? 'Live Connection' : 'Simulated Feed'}
+      {/* Premium Glassmorphic Header */}
+      <header
+        className="glass-panel"
+        style={{
+          margin: '16px 24px 8px',
+          padding: '16px 24px',
+          borderRadius: '16px',
+          background: 'linear-gradient(135deg, rgba(15,23,42,0.85) 0%, rgba(11,17,32,0.9) 100%)',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        {/* Top Header Row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #00ff87, #00e5ff)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px',
+                boxShadow: '0 0 20px rgba(0,255,135,0.3)',
+              }}
+            >
+              ⚽
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 900, letterSpacing: '-0.5px' }} className="gradient-text">
+                  DeepStream AI
+                </h1>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    padding: '3px 10px',
+                    borderRadius: '999px',
+                    backgroundColor: wsConnected ? 'rgba(0, 255, 135, 0.12)' : 'rgba(255, 165, 0, 0.12)',
+                    color: wsConnected ? '#00ff87' : '#f59e0b',
+                    border: wsConnected ? '1px solid rgba(0, 255, 135, 0.3)' : '1px solid rgba(255, 165, 0, 0.3)',
+                    fontWeight: 700,
+                  }}
+                >
+                  {wsConnected ? '● Live Telemetry' : '⚡ Sim Engine'}
+                </span>
+                <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(168,85,247,0.15)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)', fontWeight: 700 }}>
+                  26 AI Modules
+                </span>
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                Enterprise Real-Time AI Football Analytics & 3D Spatial Platform
               </span>
             </div>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>AI Football Analytics & World Cup Engine</span>
+          </div>
+
+          {/* Quick Search */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ position: 'relative' }}>
+              <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input
+                id="tab-search-input"
+                type="text"
+                placeholder="Search 26 AI features..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '10px',
+                  padding: '7px 12px 7px 34px',
+                  color: '#f8fafc',
+                  fontSize: '12px',
+                  outline: 'none',
+                  width: '200px',
+                  transition: 'all 0.2s',
+                }}
+              />
+            </div>
           </div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            onClick={() => setActiveTab("live")}
-            style={{ 
-              background: activeTab === "live" ? 'rgba(255,255,255,0.08)' : 'transparent',
-              color: activeTab === "live" ? 'var(--color-green)' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            Live Match Center
-          </button>
-          <button 
-            onClick={() => setActiveTab("simulator")}
-            style={{ 
-              background: activeTab === "simulator" ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
-              color: activeTab === "simulator" ? '#60a5fa' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            ⚡ Tactical Simulator
-          </button>
-          <button 
-            onClick={() => setActiveTab("scout")}
-            style={{ 
-              background: activeTab === "scout" ? 'rgba(168, 85, 247, 0.2)' : 'transparent',
-              color: activeTab === "scout" ? '#c084fc' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🔍 AI Scout Engine
-          </button>
-          <button 
-            onClick={() => setActiveTab("fantasy")}
-            style={{ 
-              background: activeTab === "fantasy" ? 'rgba(234, 179, 8, 0.2)' : 'transparent',
-              color: activeTab === "fantasy" ? '#facc15' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🏆 Live Fantasy
-          </button>
-          <button 
-            onClick={() => setActiveTab("ar")}
-            style={{ 
-              background: activeTab === "ar" ? 'rgba(14, 165, 233, 0.2)' : 'transparent',
-              color: activeTab === "ar" ? '#38bdf8' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🥽 WebAR View
-          </button>
-          <button 
-            onClick={() => setActiveTab("fatigue")}
-            style={{ 
-              background: activeTab === "fatigue" ? 'rgba(239, 68, 68, 0.2)' : 'transparent',
-              color: activeTab === "fatigue" ? '#f87171' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🛡️ Fatigue & Risk
-          </button>
-          <button 
-            onClick={() => setActiveTab("board3d")}
-            style={{ 
-              background: activeTab === "board3d" ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
-              color: activeTab === "board3d" ? '#4ade80' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            ✏️ 3D Board
-          </button>
-          <button 
-            onClick={() => setActiveTab("referee")}
-            style={{ 
-              background: activeTab === "referee" ? 'rgba(234, 179, 8, 0.2)' : 'transparent',
-              color: activeTab === "referee" ? '#facc15' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            ⚖️ AI Referee
-          </button>
-          <button 
-            onClick={() => setActiveTab("academy")}
-            style={{ 
-              background: activeTab === "academy" ? 'rgba(168, 85, 247, 0.2)' : 'transparent',
-              color: activeTab === "academy" ? '#c084fc' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🎓 Youth Academy
-          </button>
-          <button 
-            onClick={() => setActiveTab("twin")}
-            style={{ 
-              background: activeTab === "twin" ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-              color: activeTab === "twin" ? '#38bdf8' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🏟️ Digital Twin
-          </button>
-          <button 
-            onClick={() => setActiveTab("biomechanics")}
-            style={{ 
-              background: activeTab === "biomechanics" ? 'rgba(239, 68, 68, 0.2)' : 'transparent',
-              color: activeTab === "biomechanics" ? '#ef4444' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🧠 Biomechanics
-          </button>
-          <button 
-            onClick={() => setActiveTab("alphazero")}
-            style={{ 
-              background: activeTab === "alphazero" ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
-              color: activeTab === "alphazero" ? '#4ade80' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🎯 AlphaZero Pass
-          </button>
-          <button 
-            onClick={() => setActiveTab("stocks")}
-            style={{ 
-              background: activeTab === "stocks" ? 'rgba(234, 179, 8, 0.2)' : 'transparent',
-              color: activeTab === "stocks" ? '#facc15' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            💰 Player Stocks
-          </button>
-          <button 
-            onClick={() => setActiveTab("visionpro")}
-            style={{ 
-              background: activeTab === "visionpro" ? 'rgba(192, 132, 252, 0.2)' : 'transparent',
-              color: activeTab === "visionpro" ? '#c084fc' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🕶️ Vision Pro Spatial
-          </button>
-          <button 
-            onClick={() => setActiveTab("voronoi")}
-            style={{ 
-              background: activeTab === "voronoi" ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
-              color: activeTab === "voronoi" ? '#4ade80' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🧮 Voronoi Control
-          </button>
-          <button 
-            onClick={() => setActiveTab("grpc")}
-            style={{ 
-              background: activeTab === "grpc" ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-              color: activeTab === "grpc" ? '#38bdf8' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            📡 gRPC Inspector
-          </button>
-          <button 
-            onClick={() => setActiveTab("epl")}
-            style={{ 
-              background: activeTab === "epl" ? 'rgba(239, 68, 68, 0.2)' : 'transparent',
-              color: activeTab === "epl" ? '#ef4444' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🏴󠁧󠁢󠁥󠁮󠁧󠁿 EPL Gameplay
-          </button>
-          <button 
-            onClick={() => setActiveTab("comanager")}
-            style={{ 
-              background: activeTab === "comanager" ? 'rgba(248, 113, 113, 0.2)' : 'transparent',
-              color: activeTab === "comanager" ? '#f87171' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🤖 Co-Manager
-          </button>
-          <button 
-            onClick={() => setActiveTab("smartball")}
-            style={{ 
-              background: activeTab === "smartball" ? 'rgba(250, 204, 21, 0.2)' : 'transparent',
-              color: activeTab === "smartball" ? '#facc15' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            ⚽ IoT Smart Ball
-          </button>
-          <button 
-            onClick={() => setActiveTab("sonar")}
-            style={{ 
-              background: activeTab === "sonar" ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-              color: activeTab === "sonar" ? '#38bdf8' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🎯 Passing Sonar
-          </button>
-          <button 
-            onClick={() => setActiveTab("varaudio")}
-            style={{ 
-              background: activeTab === "varaudio" ? 'rgba(34, 197, 94, 0.2)' : 'transparent',
-              color: activeTab === "varaudio" ? '#4ade80' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            🔊 VAR Audio
-          </button>
-          <button 
-            onClick={() => setActiveTab("bracket")}
-            style={{ 
-              background: activeTab === "bracket" ? 'rgba(255,255,255,0.08)' : 'transparent',
-              color: activeTab === "bracket" ? 'var(--color-green)' : '#9ca3af',
-              border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
-            }}>
-            World Cup Bracket
-          </button>
+
+        {/* Category Filter Pills */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          {[
+            { id: "all", label: "🌐 All Modules (26)", icon: "🔥" },
+            { id: "match", label: "🔴 Match & Gameplay (5)", icon: "⚽" },
+            { id: "ai-vision", label: "🤖 AI & CV Engines (4)", icon: "👁️" },
+            { id: "tactics", label: "🎯 Scouting & Tactics (5)", icon: "📐" },
+            { id: "medical", label: "🩺 Biomechanics & 3D (6)", icon: "🧠" },
+            { id: "ops", label: "⚖️ Ops & Hardware (6)", icon: "📡" },
+          ].map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: activeCategory === cat.id ? 'rgba(0, 255, 135, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                color: activeCategory === cat.id ? '#00ff87' : '#94a3b8',
+                fontWeight: 700,
+                fontSize: '12px',
+                cursor: 'pointer',
+                borderBottom: activeCategory === cat.id ? '2px solid #00ff87' : '2px solid transparent',
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Feature Tab Buttons Carousel Grid */}
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingTop: '10px', paddingBottom: '4px' }}>
+          {filteredTabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                id={`app-tab-btn-${tab.id}`}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  background: isActive ? tab.bg : 'transparent',
+                  color: isActive ? tab.color : '#94a3b8',
+                  border: isActive ? `1px solid ${tab.color}44` : '1px solid transparent',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+                {tab.tag && (
+                  <span
+                    style={{
+                      fontSize: '9px',
+                      padding: '1px 5px',
+                      borderRadius: '4px',
+                      background: `${tab.color}22`,
+                      color: tab.color,
+                      fontWeight: 800,
+                      letterSpacing: '0.03em',
+                    }}
+                  >
+                    {tab.tag}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </header>
 
@@ -723,8 +725,148 @@ export default function App() {
           </div>
         )}
 
+        {/* =========================================================
+            AI Football Analytics Tab — merged from graduation project
+            ========================================================= */}
+        {activeTab === "ai-analytics" && (
+          <div style={{ padding: '0 16px 32px' }}>
+            {/* Section header */}
+            <div className="glass-panel" style={{ padding: '24px 32px', marginBottom: '24px', textAlign: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '26px', fontWeight: 800, background: 'linear-gradient(90deg,#4ade80,#22d3ee)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                ⚽ AI Football Analytics Engine
+              </h2>
+              <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                12-Stage Computer Vision Pipeline · YOLO11m · BoT-SORT · Homography Calibration · 340+ Tests
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
+                {['Detection','Tracking','Team Clustering','Pitch Calibration','Speed & Distance','Player Rating 0–10','Heatmaps','Possession','Tactics','Match Report'].map(f => (
+                  <span key={f} style={{ padding: '3px 10px', background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '999px', color: '#4ade80', fontSize: '11px', fontWeight: 600 }}>{f}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* 2-column grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: '20px' }}>
+              {/* Match Report */}
+              <MatchReportPanel homeTeam="Argentina" awayTeam="France" />
+
+              {/* Speed Distance & Possession */}
+              <SpeedDistancePanel homeTeam="Argentina" awayTeam="France" />
+
+              {/* Heatmap */}
+              <PlayerHeatmapViewer homeTeam="Argentina" awayTeam="France" />
+
+              {/* Tactical Profiles */}
+              <TacticalProfileCard homeTeam="Argentina" awayTeam="France" />
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================
+            Football Possession Analytics Tab — merged from possession project
+            YOLOv8 + GMM CIELAB Team Clustering + Proximity Tracking
+            ========================================================= */}
+        {activeTab === "possession" && (
+          <div style={{ padding: '0 16px 32px' }}>
+            {/* Section header */}
+            <div className="glass-panel" style={{ padding: '24px 32px', marginBottom: '24px', textAlign: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '26px', fontWeight: 800, background: 'linear-gradient(90deg,#f87171,#fb923c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                🏟️ Football Possession Analytics Engine
+              </h2>
+              <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                YOLOv8 Detection · GMM CIELAB Automatic Team Clustering · Proximity-Based Possession Tracking
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
+                {[
+                  'YOLOv8 Player Detection',
+                  'Torso Crop + Grass Masking',
+                  'CIELAB Color Space',
+                  'Gaussian Mixture Model (k=2)',
+                  'Frame-by-Frame Possession',
+                  'Broadcast Scoreboard',
+                  'JSON + CSV Export',
+                ].map(f => (
+                  <span key={f} style={{ padding: '3px 10px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: '999px', color: '#f87171', fontSize: '11px', fontWeight: 600 }}>{f}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* 2-column grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: '20px' }}>
+              {/* Live Possession Dashboard (broadcast-style + trend chart) */}
+              <PossessionLiveDashboard homeTeam="Argentina" awayTeam="France" />
+
+              {/* GMM Team Cluster Viewer */}
+              <GMMTeamClusterViewer homeTeam="Argentina" awayTeam="France" />
+
+              {/* Player Possession Breakdown (full width) */}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <PlayerPossessionBreakdown homeTeam="Argentina" awayTeam="France" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================================
+            YOLO26 AI Football Analytics Studio Tab
+            Custom YOLO26 Detection + 17-Keypoint Pose + Ball Trajectory
+            ========================================================= */}
+        {activeTab === "yolo26" && (
+          <div style={{ padding: '0 16px 32px' }}>
+            <YOLO26AnalyticsStudio videoSrc="/YOLO26 .mp4" />
+          </div>
+        )}
+
+        {/* =========================================================
+            Next-Gen Stadium Engine Tab (RTSP, Voice Commentary, TensorRT, MultiCam Sync)
+            ========================================================= */}
+        {activeTab === "nextgen" && (
+          <div style={{ padding: '0 16px 32px' }}>
+            <NextGenStadiumStudio />
+          </div>
+        )}
 
       </main>
+
+      {/* Futuristic Glassmorphic Footer */}
+      <footer
+        className="glass-panel"
+        style={{
+          margin: '24px',
+          padding: '20px 32px',
+          borderRadius: '16px',
+          background: 'linear-gradient(135deg, rgba(15,23,42,0.9) 0%, rgba(3,7,18,0.95) 100%)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '20px' }}>⚽</span>
+          <div>
+            <div style={{ color: '#f8fafc', fontWeight: 800, fontSize: '14px' }}>DeepStream Platform v4.0.0 Enterprise</div>
+            <div style={{ color: '#64748b', fontSize: '11px', marginTop: '2px' }}>
+              Full-Stack AI Football Analytics · Go Gateway · Rust ONNX · Python Flask AI Engine · React 18
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#4ade80' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80' }} />
+            26 AI Modules Operational
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#60a5fa' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#60a5fa', boxShadow: '0 0 8px #60a5fa' }} />
+            TensorRT INT8 328 FPS
+          </div>
+          <span style={{ color: '#64748b', fontSize: '11px' }}>© 2026 DeepStream. All rights reserved.</span>
+        </div>
+      </footer>
     </div>
   );
 }
+

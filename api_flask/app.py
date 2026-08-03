@@ -14,6 +14,13 @@ from services.alphazero_pass import AlphaZeroPassEngine
 from services.stock_market_service import PlayerStockMarketService
 from services.co_manager import AICoManagerService
 from services.epl_database import EPLDatabaseService
+from services.analytics_service import FootballAnalyticsService
+from services.possession_analytics_service import PossessionAnalyticsService
+from services.yolo26_service import YOLO26AnalyticsService
+from services.rtsp_streamer_service import RTSPStreamerService
+from services.voice_commentary_service import AIVoiceCommentaryService
+from services.tensorrt_accelerator_service import TensorRTAcceleratorService
+from services.multicam_sync_service import MultiCamSyncService
 
 app = Flask(__name__)
 genai_engine = GenAIService()
@@ -26,6 +33,13 @@ alphazero_engine = AlphaZeroPassEngine()
 stock_engine = PlayerStockMarketService()
 comanager_engine = AICoManagerService()
 epl_engine = EPLDatabaseService()
+football_analytics = FootballAnalyticsService(fps=25.0)
+possession_analytics = PossessionAnalyticsService()
+yolo26_analytics = YOLO26AnalyticsService()
+rtsp_streamer = RTSPStreamerService()
+voice_commentary = AIVoiceCommentaryService()
+tensorrt_accelerator = TensorRTAcceleratorService()
+multicam_sync = MultiCamSyncService()
 
 
 @app.route('/health', methods=['GET'])
@@ -199,7 +213,249 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
 
 
+# ===========================================================================
+# AI Football Analytics Endpoints (merged from graduation project)
+# ===========================================================================
+
+@app.route('/api/v1/football-analytics/speed-distance', methods=['POST'])
+def get_speed_distance():
+    """Per-player speed & distance analytics.
+    Optional body: {"field_positions": [...]} for real CV pipeline output.
+    Without it, uses synthetic demo data.
+    """
+    data = request.get_json() or {}
+    field_positions = data.get('field_positions')
+    result = football_analytics.compute_speed_distance(field_positions)
+    return jsonify(result), 200
 
 
+@app.route('/api/v1/football-analytics/player-performance', methods=['POST'])
+def get_player_performance():
+    """Per-player 0–10 rating, work rate, fatigue, and insight sentence."""
+    data = request.get_json() or {}
+    field_positions = data.get('field_positions')
+    result = football_analytics.compute_player_performance(field_positions)
+    return jsonify(result), 200
+
+
+@app.route('/api/v1/football-analytics/possession', methods=['POST'])
+def get_possession():
+    """Field-space ball possession percentages (team 0 vs team 1)."""
+    data = request.get_json() or {}
+    field_positions = data.get('field_positions')
+    gate_m = float(data.get('gate_m', 5.0))
+    result = football_analytics.compute_possession(field_positions, gate_m=gate_m)
+    return jsonify(result), 200
+
+
+@app.route('/api/v1/football-analytics/tactical', methods=['POST'])
+def get_tactical_profiles():
+    """Team tactical profiles: compactness, pressure style, build-up, attacking zone."""
+    data = request.get_json() or {}
+    field_positions = data.get('field_positions')
+    result = football_analytics.compute_tactical_profiles(field_positions)
+    return jsonify(result), 200
+
+
+@app.route('/api/v1/football-analytics/heatmap', methods=['POST'])
+def get_heatmap():
+    """Gaussian density heatmap grid for a team.
+    Body: {"team_id": 0|1, "px_per_meter": 4.0, "field_positions": [...]}
+    """
+    data = request.get_json() or {}
+    team_id = int(data.get('team_id', 0))
+    px_per_meter = float(data.get('px_per_meter', 4.0))
+    field_positions = data.get('field_positions')
+    result = football_analytics.compute_heatmap(team_id, field_positions, px_per_meter)
+    return jsonify(result), 200
+
+
+@app.route('/api/v1/football-analytics/match-report', methods=['POST'])
+def get_match_report():
+    """Full AI match report: man-of-match, key insights, team tactics, recommendations."""
+    data = request.get_json() or {}
+    field_positions = data.get('field_positions')
+    home_team = data.get('home_team', 'Team A')
+    away_team = data.get('away_team', 'Team B')
+    result = football_analytics.compute_match_report(field_positions, home_team, away_team)
+    return jsonify(result), 200
+
+# ===========================================================================
+# Football Possession Analytics Endpoints (merged from possession project)
+# GMM-based jersey color team clustering + YOLOv8 proximity possession tracking
+# ===========================================================================
+
+@app.route('/api/v1/possession-analytics/summary', methods=['POST'])
+def get_possession_analytics_summary():
+    """Full possession summary: %, timeline, dominant team, clustering method.
+    Body: {"home_team": str, "away_team": str, "n_frames": int, "dist_threshold": float}
+    """
+    data = request.get_json() or {}
+    home = data.get('home_team', 'Team A')
+    away = data.get('away_team', 'Team B')
+    n_frames = int(data.get('n_frames', 500))
+    dist_threshold = float(data.get('dist_threshold', 80.0))
+    result = possession_analytics.get_possession_summary(home, away, n_frames, dist_threshold)
+    return jsonify(result), 200
+
+
+@app.route('/api/v1/possession-analytics/trend', methods=['POST'])
+def get_possession_trend():
+    """Windowed possession trend for time-series chart.
+    Body: {"home_team": str, "away_team": str, "n_frames": int, "window_size": int}
+    """
+    data = request.get_json() or {}
+    home = data.get('home_team', 'Team A')
+    away = data.get('away_team', 'Team B')
+    n_frames = int(data.get('n_frames', 500))
+    window_size = int(data.get('window_size', 50))
+    result = possession_analytics.get_possession_trend(home, away, n_frames, window_size)
+    return jsonify(result), 200
+
+
+@app.route('/api/v1/possession-analytics/clustering', methods=['POST'])
+def get_team_clustering():
+    """GMM team clustering info: CIELAB centroids, jersey color, confidence, samples.
+    Body: {"home_team": str, "away_team": str}
+    """
+    data = request.get_json() or {}
+    home = data.get('home_team', 'Team A')
+    away = data.get('away_team', 'Team B')
+    result = possession_analytics.get_team_clustering_info(home, away)
+    return jsonify(result), 200
+
+
+@app.route('/api/v1/possession-analytics/player-breakdown', methods=['POST'])
+def get_player_possession_breakdown():
+    """Per-player possession frame count and percentage.
+    Body: {"home_team": str, "away_team": str, "n_frames": int}
+    """
+    data = request.get_json() or {}
+    home = data.get('home_team', 'Team A')
+    away = data.get('away_team', 'Team B')
+    n_frames = int(data.get('n_frames', 500))
+    result = possession_analytics.get_player_possession_breakdown(home, away, n_frames)
+    return jsonify(result), 200
+
+
+@app.route('/api/v1/possession-analytics/export-csv', methods=['POST'])
+def export_possession_csv():
+    """Returns possession event log as downloadable CSV."""
+    from flask import Response
+    data = request.get_json() or {}
+    home = data.get('home_team', 'Team A')
+    away = data.get('away_team', 'Team B')
+    n_frames = int(data.get('n_frames', 500))
+    csv_content = possession_analytics.get_possession_csv(home, away, n_frames)
+    return Response(
+        csv_content,
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment;filename=possession_{home}_vs_{away}.csv'}
+    )
+
+
+# ===========================================================================
+# YOLO26 AI Football Analytics Endpoints
+# Custom-trained YOLO26 detection, pose estimation, trajectory, & movement map
+# ===========================================================================
+
+@app.route('/api/v1/yolo26/pose-analysis', methods=['POST'])
+def get_yolo26_pose_analysis():
+    """17-keypoint skeleton pose estimation & biomechanical metrics."""
+    data = request.get_json() or {}
+    player_id = int(data.get('player_id', 7))
+    result = yolo26_analytics.get_pose_analysis(player_id)
+    return jsonify(result), 200
+
+
+@app.route('/api/v1/yolo26/ball-trajectory', methods=['POST'])
+def get_yolo26_ball_trajectory():
+    """Parabolic ball trajectory path, flight curve, speed, and spin."""
+    data = request.get_json() or {}
+    n_points = int(data.get('n_points', 40))
+    result = yolo26_analytics.get_ball_trajectory(n_points)
+    return jsonify(result), 200
+
+
+@app.route('/api/v1/yolo26/movement-map', methods=['POST'])
+def get_yolo26_movement_map():
+    """Field-wide player & ball movement trajectories."""
+    result = yolo26_analytics.get_movement_map()
+    return jsonify(result), 200
+
+
+@app.route('/api/v1/yolo26/summary', methods=['GET', 'POST'])
+def get_yolo26_summary():
+    """YOLO26 model architecture performance metrics & feature state."""
+    result = yolo26_analytics.get_model_summary()
+    return jsonify(result), 200
+
+
+# ===========================================================================
+# Next Updates Services (RTSP Stream, Voice Commentary, TensorRT, MultiCam)
+# ===========================================================================
+
+# 1. RTSP & WebRTC Live Streaming
+@app.route('/api/v1/rtsp/connect-stream', methods=['POST'])
+def rtsp_connect_stream():
+    data = request.get_json() or {}
+    rtsp_url = data.get('rtsp_url', 'rtsp://stadium-cam.local/live')
+    cam_name = data.get('camera_name', 'Stadium Camera')
+    res = rtsp_streamer.connect_stream(rtsp_url, cam_name)
+    return jsonify(res), 200
+
+@app.route('/api/v1/rtsp/streams', methods=['GET', 'POST'])
+def rtsp_get_streams():
+    res = rtsp_streamer.get_active_streams()
+    return jsonify(res), 200
+
+@app.route('/api/v1/rtsp/frame-buffer-status', methods=['GET', 'POST'])
+def rtsp_get_cuda_buffer_status():
+    res = rtsp_streamer.get_cuda_buffer_status()
+    return jsonify(res), 200
+
+
+# 2. AI Multilingual Voice Commentary (AR / EN / FR)
+@app.route('/api/v1/commentary/generate', methods=['POST'])
+def commentary_generate():
+    data = request.get_json() or {}
+    lang = data.get('language', 'ar')
+    event_type = data.get('event_type', 'shot')
+    res = voice_commentary.generate_commentary(lang, event_type)
+    return jsonify(res), 200
+
+@app.route('/api/v1/commentary/live-feed', methods=['GET', 'POST'])
+def commentary_get_live_feed():
+    data = request.get_json() or {}
+    lang = data.get('language', 'ar')
+    res = voice_commentary.get_live_feed(lang)
+    return jsonify(res), 200
+
+
+# 3. NVIDIA TensorRT GPU Acceleration
+@app.route('/api/v1/tensorrt/quantize', methods=['POST'])
+def tensorrt_quantize():
+    data = request.get_json() or {}
+    model_name = data.get('model_name', 'YOLO26m-Football-Custom')
+    target_precision = data.get('target_precision', 'INT8')
+    res = tensorrt_accelerator.quantize_model(model_name, target_precision)
+    return jsonify(res), 200
+
+@app.route('/api/v1/tensorrt/benchmark', methods=['GET', 'POST'])
+def tensorrt_get_benchmark():
+    res = tensorrt_accelerator.get_benchmark_comparison()
+    return jsonify(res), 200
+
+
+# 4. Multi-Camera Stadium Synchronization (Zero Occlusion)
+@app.route('/api/v1/multicam/sync', methods=['POST', 'GET'])
+def multicam_sync_feeds():
+    res = multicam_sync.synchronize_feeds()
+    return jsonify(res), 200
+
+@app.route('/api/v1/multicam/occlusion-status', methods=['GET', 'POST'])
+def multicam_get_occlusion_status():
+    res = multicam_sync.get_occlusion_status()
+    return jsonify(res), 200
 
 
