@@ -1,11 +1,18 @@
-# Ignore backend directories for Vercel Frontend deployment
-api/
-inference/
-ml/
-features/
-data/
-mobile/
-infrastructure/
-scripts/
-notebooks/
-docs/
+# Ignore root backend directories for Vercel Frontend deployment
+/api/
+/api_flask/
+/api_node/
+/admin_django/
+/inference/
+/ml/
+/features/
+/data/
+/dataset/
+/mobile/
+/infrastructure/
+/scripts/
+/notebooks/
+/docs/
+/sdks/
+/tests/
+/models/
