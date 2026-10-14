@@ -13,8 +13,8 @@ Ultra-low latency multimodal AI streaming and real-time inference platform built
 - **Security Policy**: Comprehensive security guidelines and vulnerability reporting standard.
 
 ## 🛠️ Technology Stack
-- **Languages**: Multi-language
-- **Platform**: GitHub Actions CI/CD, Cross-platform compatibility
+- Languages: Multi-language
+- Platform: GitHub Actions CI/CD, Cross-platform compatibility
 
 ## 🚀 Getting Started
 
